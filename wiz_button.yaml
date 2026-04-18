@@ -1,0 +1,34 @@
+esphome:
+  name: wiz-off-button
+  includes:
+    - <lwip/sockets.h>
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: 'NK Deco_IoT'
+  password: 'almost uploaded it lol'
+  fast_connect: true
+
+binary_sensor:
+  - platform: gpio
+    id: off_button
+    pin:
+      number: 21
+      mode: INPUT_PULLUP
+      inverted: true
+    on_press:
+      - lambda: |-
+          int sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+          if (sock >= 0) {
+            struct sockaddr_in dest_addr;
+            dest_addr.sin_addr.s_addr = inet_addr("192.168.68.53");
+            dest_addr.sin_family = AF_INET;
+            dest_addr.sin_port = htons(38899);
+            const char *payload = "{\"method\":\"setPilot\",\"params\":{\"state\":false}}";
+            sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            close(sock);
+          }
