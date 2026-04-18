@@ -21,6 +21,10 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'true'
+  - id: is_max_theme
+    type: bool
+    restore_value: no
+    initial_value: 'true'
 
 binary_sensor:
   - platform: gpio
@@ -46,5 +50,32 @@ binary_sensor:
             ::sendto(sock, payload.c_str(), payload.length(), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             ::lwip_close(sock);
             
-            ESP_LOGD("main", "UDP Toggle Sent: %s", state_val.c_str());
+            ESP_LOGD("main", "Power Toggle Sent: %s", state_val.c_str());
+          }
+
+  - platform: gpio
+    id: theme_button
+    pin:
+      number: 22
+      mode: INPUT_PULLUP
+      inverted: true
+    on_press:
+      - lambda: |-
+          id(is_max_theme) = !id(is_max_theme);
+          int sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+          if (sock >= 0) {
+            struct sockaddr_in dest_addr;
+            dest_addr.sin_addr.s_addr = ::inet_addr("192.168.68.53");
+            dest_addr.sin_family = AF_INET;
+            dest_addr.sin_port = htons(38899);
+            
+            const char *payload = id(is_max_theme) 
+              ? "{\"method\":\"setPilot\",\"params\":{\"state\":true,\"temp\":6500,\"dimming\":100}}"
+              : "{\"method\":\"setPilot\",\"params\":{\"state\":true,\"temp\":2200,\"dimming\":55}}";
+            
+            ::sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            ::lwip_close(sock);
+            id(is_light_on) = true; // Ensure power state is synced
+
+            ESP_LOGD("main", "Theme Sent: %s", id(is_max_theme) ? "Max Theme" : "Min Theme");
           }
