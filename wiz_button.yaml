@@ -1,5 +1,5 @@
 esphome:
-  name: wiz-off-button
+  name: wiz-toggle-button
   includes:
     - <lwip/sockets.h>
 
@@ -16,6 +16,12 @@ wifi:
 logger:
   level: DEBUG
 
+globals:
+  - id: is_light_on
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+
 binary_sensor:
   - platform: gpio
     id: off_button
@@ -25,14 +31,20 @@ binary_sensor:
       inverted: true
     on_press:
       - lambda: |-
+          id(is_light_on) = !id(is_light_on);
+
           int sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
           if (sock >= 0) {
             struct sockaddr_in dest_addr;
             dest_addr.sin_addr.s_addr = ::inet_addr("192.168.68.53");
             dest_addr.sin_family = AF_INET;
             dest_addr.sin_port = htons(38899);
-            const char *payload = "{\"method\":\"setPilot\",\"params\":{\"state\":false}}";
-            ::sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            
+            std::string state_val = id(is_light_on) ? "true" : "false";
+            std::string payload = "{\"method\":\"setPilot\",\"params\":{\"state\":" + state_val + "}}";
+            
+            ::sendto(sock, payload.c_str(), payload.length(), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             ::lwip_close(sock);
-            ESP_LOGD("main", "UDP Packet Sent to WiZ");
+            
+            ESP_LOGD("main", "UDP Toggle Sent: %s", state_val.c_str());
           }
