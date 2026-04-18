@@ -13,6 +13,9 @@ wifi:
   password: 'almost uploaded it lol'
   fast_connect: true
 
+logger:
+  level: DEBUG
+
 binary_sensor:
   - platform: gpio
     id: off_button
@@ -25,10 +28,11 @@ binary_sensor:
           int sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
           if (sock >= 0) {
             struct sockaddr_in dest_addr;
-            dest_addr.sin_addr.s_addr = inet_addr("192.168.68.53");
+            dest_addr.sin_addr.s_addr = ::inet_addr("192.168.68.53");
             dest_addr.sin_family = AF_INET;
             dest_addr.sin_port = htons(38899);
             const char *payload = "{\"method\":\"setPilot\",\"params\":{\"state\":false}}";
-            sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            close(sock);
+            ::sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            ::lwip_close(sock);
+            ESP_LOGD("main", "UDP Packet Sent to WiZ");
           }
